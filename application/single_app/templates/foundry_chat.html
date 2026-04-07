@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% block title %}Foundry Chat — {{ app_settings.app_title }}{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/foundry_chat.css') }}">
+<style>
+    /* Override base.html container so Foundry Chat can fill the full viewport */
+    #main-content {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        height: calc(100vh - 56px); /* subtract navbar height */
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+    /* When sidebar is active, account for it */
+    #main-content.sidebar-padding {
+        padding-left: 260px !important;
+    }
+    #fc-shell {
+        height: 100%;
+    }
+    body {
+        overflow: hidden !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Foundry Chat standalone shell — intentionally outside the regular layout grid -->
+<div id="fc-shell">
+
+    <!-- ══════════════════════ HEADER ══════════════════════ -->
+    <header id="fc-header">
+
+        <!-- Logo upload area (click to upload, right-click to remove) -->
+        <div id="fc-logo-wrapper" title="Click to upload logo · Right-click to remove">
+            <img id="fc-logo-img" src="" alt="Logo" class="d-none">
+            <div id="fc-logo-placeholder"><i class="bi bi-image"></i></div>
+            <div id="fc-logo-overlay"><i class="bi bi-arrow-up-circle"></i></div>
+            <input id="fc-logo-input" type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp">
+        </div>
+
+        <!-- Title block -->
+        <div class="flex-fill">
+            <div id="fc-title">
+                <span id="fc-title-text">Foundry Chat</span>
+            </div>
+            <div id="fc-subtitle">Azure AI Foundry · GPT 5.1</div>
+        </div>
+
+        <!-- Status indicator -->
+        <div id="fc-status">
+            <span id="fc-status-dot"></span>
+            <span id="fc-status-text">Ready</span>
+        </div>
+
+        <!-- Header action buttons -->
+        <div class="fc-header-actions">
+            <button id="fc-theme-btn" class="fc-icon-btn" title="Toggle theme">
+                <i class="bi bi-sun-fill"></i>
+            </button>
+            <button id="fc-settings-btn" class="fc-icon-btn" title="Settings">
+                <i class="bi bi-gear"></i>
+            </button>
+            <button id="fc-new-chat-btn">
+                <i class="bi bi-plus-lg"></i> New Chat
+            </button>
+        </div>
+    </header>
+
+    <!-- ══════════════════════ MAIN ══════════════════════ -->
+    <div id="fc-main">
+
+        <!-- Messages area -->
+        <div id="fc-messages">
+
+            <!-- Welcome splash (hidden once conversation starts) -->
+            <div id="fc-welcome">
+                <div id="fc-welcome-icon"><i class="bi bi-stars"></i></div>
+                <h2>How can I help you today?</h2>
+                <p>Powered by Azure AI Foundry. Send text, images, or documents — I'll do my best to assist.</p>
+                <div class="fc-welcome-chips">
+                    <div class="fc-chip">Summarise a document</div>
+                    <div class="fc-chip">Explain a concept</div>
+                    <div class="fc-chip">Analyse an image</div>
+                    <div class="fc-chip">Write some code</div>
+                    <div class="fc-chip">Draft an email</div>
+                </div>
+            </div>
+
+            <!-- Typing indicator (stays in DOM, toggled via JS) -->
+            <div id="fc-typing">
+                <div class="fc-avatar" style="background:var(--fc-surface-2);border:1px solid var(--fc-border);color:var(--fc-primary);width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;margin-top:2px;">
+                    <i class="bi bi-stars"></i>
+                </div>
+                <div class="fc-typing-bubble">
+                    <span class="fc-dot"></span>
+                    <span class="fc-dot"></span>
+                    <span class="fc-dot"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════ INPUT ══════════════════════ -->
+    <div id="fc-input-section">
+
+        <!-- Error banner -->
+        <div id="fc-error-banner">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <span id="fc-error-banner-text"></span>
+        </div>
+
+        <!-- File / image preview strip -->
+        <div id="fc-file-preview"></div>
+
+        <!-- Textarea + action buttons -->
+        <div id="fc-textarea-wrap">
+            <textarea
+                id="fc-message-input"
+                rows="1"
+                placeholder="Message Foundry Chat… (Shift+Enter for new line)"
+                autocomplete="off"
+                spellcheck="true"
+            ></textarea>
+
+            <div class="fc-input-actions">
+                <button type="button" id="fc-attach-file-btn"  class="fc-attach-btn" title="Attach document">
+                    <i class="bi bi-paperclip"></i>
+                </button>
+                <button type="button" id="fc-attach-image-btn" class="fc-attach-btn" title="Attach image">
+                    <i class="bi bi-image"></i>
+                </button>
+                <button type="button" id="fc-send-btn" title="Send (Enter)">
+                    <i class="bi bi-send-fill"></i>
+                </button>
+            </div>
+
+            <!-- Hidden file inputs -->
+            <input type="file" id="fc-file-input"  accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.xls,.pptx,.md" multiple>
+            <input type="file" id="fc-image-input" accept="image/png,image/jpeg,image/gif,image/webp,image/bmp" multiple>
+        </div>
+
+        <!-- Keyboard hint -->
+        <div id="fc-hint">
+            <span><kbd>Enter</kbd> to send · <kbd>Shift</kbd>+<kbd>Enter</kbd> for new line</span>
+            <span>Drag &amp; drop files onto the input box</span>
+        </div>
+    </div>
+
+    <!-- ══════════════════════ SETTINGS DRAWER ══════════════════════ -->
+    <div id="fc-settings-overlay">
+        <div id="fc-settings-drawer">
+            <div class="fc-settings-header">
+                <h2><i class="bi bi-gear me-2"></i>Settings</h2>
+                <button id="fc-settings-close" class="fc-icon-btn"><i class="bi bi-x-lg"></i></button>
+            </div>
+
+            <div class="fc-settings-section-title">Chat</div>
+
+            <div class="fc-form-group">
+                <label for="fc-setting-title">Chat title</label>
+                <input id="fc-setting-title" class="fc-input" type="text" placeholder="Foundry Chat">
+            </div>
+
+            <div class="fc-form-group">
+                <label for="fc-setting-system-prompt">System prompt</label>
+                <textarea id="fc-setting-system-prompt" class="fc-input" rows="3" placeholder="You are a helpful AI assistant."></textarea>
+            </div>
+
+            <div class="fc-form-group">
+                <label for="fc-setting-max-tokens">Max response tokens</label>
+                <input id="fc-setting-max-tokens" class="fc-input" type="number" min="256" max="16384" step="256" value="2048">
+            </div>
+
+            <div class="fc-settings-section-title">Connection</div>
+
+            <div class="fc-form-group">
+                <label for="fc-setting-mode">Mode</label>
+                <select id="fc-setting-mode" class="fc-select">
+                    <option value="direct">Direct (Azure OpenAI)</option>
+                    <option value="foundry">Foundry Agent</option>
+                    <option value="backend">Use App Settings</option>
+                </select>
+            </div>
+
+            <!-- Direct / app-settings fields -->
+            <div id="fc-direct-fields">
+                <div class="fc-form-group">
+                    <label for="fc-setting-endpoint">Azure OpenAI endpoint</label>
+                    <input id="fc-setting-endpoint" class="fc-input" type="url"
+                        placeholder="https://your-resource.openai.azure.com/">
+                </div>
+                <div class="fc-form-group">
+                    <label for="fc-setting-deployment">Deployment / model name</label>
+                    <input id="fc-setting-deployment" class="fc-input" type="text"
+                        placeholder="gpt-5.1">
+                </div>
+                <div class="fc-form-group">
+                    <label for="fc-setting-api-version">API version</label>
+                    <input id="fc-setting-api-version" class="fc-input" type="text"
+                        placeholder="2024-10-21">
+                </div>
+                <div class="fc-form-group">
+                    <label for="fc-setting-api-key">API key <small class="text-muted">(optional with managed identity)</small></label>
+                    <input id="fc-setting-api-key" class="fc-input" type="password"
+                        placeholder="Leave blank to use managed identity / app default">
+                </div>
+            </div>
+
+            <!-- Foundry agent fields -->
+            <div id="fc-foundry-fields" class="d-none">
+                <div class="fc-form-group">
+                    <label for="fc-setting-endpoint-foundry">Foundry project endpoint</label>
+                    <input id="fc-setting-endpoint-foundry" class="fc-input" type="url"
+                        placeholder="https://your-project.services.ai.azure.com/api/projects/your-project">
+                </div>
+                <div class="fc-form-group">
+                    <label for="fc-setting-agent-id">Agent ID</label>
+                    <input id="fc-setting-agent-id" class="fc-input" type="text"
+                        placeholder="asst_...">
+                </div>
+            </div>
+
+            <div class="fc-settings-section-title">Logo</div>
+            <p style="font-size:0.8rem;color:var(--fc-text-muted);">
+                Click the logo area in the header to upload a PNG, JPG, or SVG. Right-click the logo to remove it.
+                Your logo is stored locally in this browser.
+            </p>
+
+            <button id="fc-settings-save" class="fc-btn-primary">
+                <i class="bi bi-check2-circle me-2"></i>Save settings
+            </button>
+        </div>
+    </div>
+
+    <!-- ══════════════════════ TOAST CONTAINER ══════════════════════ -->
+    <div id="fc-toast-container"></div>
+
+</div><!-- /#fc-shell -->
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<!-- Foundry Chat JS -->
+<script src="{{ url_for('static', filename='js/foundry_chat.js') }}" defer></script>
+{% endblock %}

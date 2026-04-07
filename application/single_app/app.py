@@ -78,6 +78,8 @@ from route_backend_conversation_export import register_route_backend_conversatio
 from route_backend_speech import register_route_backend_speech
 from route_backend_tts import register_route_backend_tts
 from route_enhanced_citations import register_enhanced_citations_routes
+from route_frontend_foundry_chat import register_route_frontend_foundry_chat
+from route_backend_foundry_chat import register_route_backend_foundry_chat
 from plugin_validation_endpoint import plugin_validation_bp
 from route_openapi import register_openapi_routes
 from route_migration import bp_migration
@@ -643,6 +645,10 @@ register_route_backend_user_agreement(app)
 
 # ------------------- Extenral Health Routes ----------
 register_route_external_health(app)
+
+# ------------------- Foundry Chat Routes ---------------
+register_route_frontend_foundry_chat(app)
+register_route_backend_foundry_chat(app)
 
 if __name__ == '__main__':
     settings = get_settings(use_cosmos=True)
