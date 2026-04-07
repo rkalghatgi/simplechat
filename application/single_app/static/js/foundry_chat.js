@@ -7,6 +7,11 @@
 (function () {
     "use strict";
 
+    // ── Constants ─────────────────────────────────────────
+    const MAX_ATTACHMENTS        = 5;
+    const MAX_ATTACHMENT_B64_LEN = 20 * 1024 * 1024; // 20 MB base64 limit
+    const MAX_HISTORY_ENTRIES    = 20;
+
     // ── DOM references ────────────────────────────────────
     const shell           = document.getElementById("fc-shell");
     const messagesEl      = document.getElementById("fc-messages");
@@ -51,6 +56,9 @@
     let isStreaming = false;
     let currentTheme = "dark";
     let config = {};
+    // Note: sessionApiKey is held only in memory (never persisted to localStorage)
+    // so the user must re-enter it each session, keeping credentials out of storage.
+    let sessionApiKey = "";
 
     // ── Storage keys ──────────────────────────────────────
     const STORAGE_CONFIG = "fc_config_v2";
@@ -91,7 +99,7 @@
         mode: "direct",           // "direct" | "foundry"
         endpoint: "",
         deployment: "",
-        apiKey: "",
+        // apiKey is intentionally NOT stored here — it is kept in sessionApiKey (memory only)
         apiVersion: "2024-10-21",
         agentId: "",
         maxTokens: 2048,
@@ -118,7 +126,8 @@
     function syncSettingsForm() {
         if (settingEndpoint)    settingEndpoint.value   = config.endpoint    || "";
         if (settingDeployment)  settingDeployment.value = config.deployment  || "";
-        if (settingApiKey)      settingApiKey.value     = config.apiKey      || "";
+        // API key is session-only — show blank if not yet entered this session
+        if (settingApiKey)      settingApiKey.value     = sessionApiKey      || "";
         if (settingApiVersion)  settingApiVersion.value = config.apiVersion  || DEFAULT_CONFIG.apiVersion;
         if (settingAgentId)     settingAgentId.value    = config.agentId     || "";
         if (settingMode)        settingMode.value       = config.mode        || "direct";
@@ -261,7 +270,8 @@
         config.mode         = settingMode        ? settingMode.value         : config.mode;
         config.endpoint     = settingEndpoint    ? settingEndpoint.value.trim()    : config.endpoint;
         config.deployment   = settingDeployment  ? settingDeployment.value.trim()  : config.deployment;
-        config.apiKey       = settingApiKey      ? settingApiKey.value.trim()      : config.apiKey;
+        // Store API key in memory only — not in localStorage — to avoid clear-text secret storage
+        sessionApiKey       = settingApiKey      ? settingApiKey.value.trim()      : sessionApiKey;
         config.apiVersion   = settingApiVersion  ? settingApiVersion.value.trim()  : config.apiVersion;
         config.agentId      = settingAgentId     ? settingAgentId.value.trim()     : config.agentId;
         config.maxTokens    = settingMaxTokens   ? parseInt(settingMaxTokens.value, 10) || 2048 : config.maxTokens;
@@ -296,8 +306,8 @@
     function onFilesSelected(files, isImage = false) {
         if (!files || !files.length) return;
         Array.from(files).forEach((file) => {
-            if (pendingFiles.length >= 5) {
-                showToast("Maximum 5 attachments per message", "error");
+            if (pendingFiles.length >= MAX_ATTACHMENTS) {
+                showToast(`Maximum ${MAX_ATTACHMENTS} attachments per message`, "error");
                 return;
             }
             const reader = new FileReader();
@@ -413,12 +423,12 @@
             mode: config.mode,
             endpoint: config.endpoint,
             deployment: config.deployment,
-            api_key: config.apiKey,
+            api_key: sessionApiKey,
             api_version: config.apiVersion,
             agent_id: config.agentId,
             max_tokens: config.maxTokens,
             system_prompt: config.systemPrompt,
-            history: messageHistory.slice(-20),
+            history: messageHistory.slice(-MAX_HISTORY_ENTRIES),
             attachments: attachments.map((a) => ({
                 name: a.name,
                 type: a.type,

@@ -83,9 +83,9 @@
                 <h2>How can I help you today?</h2>
                 <p>Powered by Azure AI Foundry. Send text, images, or documents — I'll do my best to assist.</p>
                 <div class="fc-welcome-chips">
-                    <div class="fc-chip">Summarise a document</div>
+                    <div class="fc-chip">Summarize a document</div>
                     <div class="fc-chip">Explain a concept</div>
-                    <div class="fc-chip">Analyse an image</div>
+                    <div class="fc-chip">Analyze an image</div>
                     <div class="fc-chip">Write some code</div>
                     <div class="fc-chip">Draft an email</div>
                 </div>
@@ -205,9 +205,12 @@
                         placeholder="2024-10-21">
                 </div>
                 <div class="fc-form-group">
-                    <label for="fc-setting-api-key">API key <small class="text-muted">(optional with managed identity)</small></label>
+                    <label for="fc-setting-api-key">API key <small class="text-muted">(session only — not saved)</small></label>
                     <input id="fc-setting-api-key" class="fc-input" type="password"
                         placeholder="Leave blank to use managed identity / app default">
+                    <small style="font-size:0.72rem;color:var(--fc-text-muted);">
+                        <i class="bi bi-shield-check me-1"></i>API key is held in memory only and is never stored in the browser.
+                    </small>
                 </div>
             </div>
 

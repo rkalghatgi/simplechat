@@ -13,7 +13,14 @@ from swagger_wrapper import swagger_route, get_auth_security
 logger = logging.getLogger(__name__)
 
 # Maximum character length for a single base64-encoded attachment to prevent abuse
-_MAX_ATTACHMENT_BASE64_LEN = 20 * 1024 * 1024  # ~15 MB decoded
+# 20 MB (base64 is ~4/3 of raw binary, so this covers ~15 MB raw files)
+_MAX_ATTACHMENT_BASE64_LEN = 20 * 1024 * 1024  # 20 MB encoded
+
+# Maximum number of attachments accepted per request (matches the JS front end)
+_MAX_ATTACHMENTS = 5
+
+# Maximum plain-text characters extracted from a non-image file before truncation
+_MAX_TEXT_ATTACHMENT_CHARS = 30_000
 
 # Supported image MIME types that Azure OpenAI vision accepts
 _IMAGE_MIME_TYPES = {
@@ -149,8 +156,8 @@ def _build_messages(system_prompt: str, history: list, user_text: str, attachmen
         try:
             decoded = base64.b64decode(raw_b64).decode("utf-8", errors="replace")
             # Truncate very large text files to avoid token overflow
-            if len(decoded) > 30_000:
-                decoded = decoded[:30_000] + "\n\n[... file truncated ...]"
+            if len(decoded) > _MAX_TEXT_ATTACHMENT_CHARS:
+                decoded = decoded[:_MAX_TEXT_ATTACHMENT_CHARS] + "\n\n[... file truncated ...]"
             extra_text_parts.append(f"[Attached file: {name}]\n{decoded}")
         except Exception:
             extra_text_parts.append(f"[Attached file: {name}] (binary content, not displayable as text)")
@@ -196,7 +203,7 @@ def register_route_backend_foundry_chat(app):
 
         # Validate attachments size
         validated_attachments = []
-        for att in raw_attachments[:5]:  # max 5 attachments
+        for att in raw_attachments[:_MAX_ATTACHMENTS]:
             b64 = att.get("base64", "")
             if len(b64) > _MAX_ATTACHMENT_BASE64_LEN:
                 return jsonify({'error': f'Attachment "{att.get("name", "")}" exceeds maximum size.'}), 400
